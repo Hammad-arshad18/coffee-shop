@@ -11,6 +11,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, cartQty, onAdd, onOpen, onSetQty }: ProductCardProps) {
+  const soldOut = product.available === false;
   return (
     <article
       className="group cursor-pointer"
@@ -22,14 +23,20 @@ export default function ProductCard({ product, cartQty, onAdd, onOpen, onSetQty 
           src={product.image}
           alt={`${product.name} — ${product.origin}`}
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06]"
+          className={`h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] ${soldOut ? "opacity-70 saturate-50" : ""}`}
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-espresso-950/75 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 md:opacity-0 max-md:opacity-100" />
 
-        {product.badge && (
-          <span className="absolute left-3 top-3 rounded-full border border-honey/40 bg-espresso-950/75 px-2.5 py-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-honey backdrop-blur-sm">
-            {product.badge}
+        {soldOut ? (
+          <span className="absolute left-3 top-3 rounded-full border border-clay/60 bg-espresso-950/80 px-2.5 py-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-[#e58a63] backdrop-blur-sm">
+            Sold out
           </span>
+        ) : (
+          product.badge && (
+            <span className="absolute left-3 top-3 rounded-full border border-honey/40 bg-espresso-950/75 px-2.5 py-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-honey backdrop-blur-sm">
+              {product.badge}
+            </span>
+          )
         )}
 
         <span
@@ -49,7 +56,11 @@ export default function ProductCard({ product, cartQty, onAdd, onOpen, onSetQty 
           className="absolute inset-x-3 bottom-3 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] md:translate-y-[115%] md:group-hover:translate-y-0"
           onClick={(e) => e.stopPropagation()}
         >
-          {cartQty === 0 ? (
+          {soldOut ? (
+            <div className="w-full rounded-lg border border-cream/15 bg-espresso-950/85 px-4 py-3 text-center text-sm font-bold text-mocha backdrop-blur">
+              Sold out — back after the next roast
+            </div>
+          ) : cartQty === 0 ? (
             <button
               onClick={() => onAdd(product)}
               className="flex w-full items-center justify-between rounded-lg border border-cream/15 bg-espresso-950/85 px-4 py-3 text-sm font-bold text-cream backdrop-blur transition-all duration-300 hover:border-caramel/70 hover:bg-espresso-950"

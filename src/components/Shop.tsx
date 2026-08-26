@@ -1,5 +1,6 @@
 import type { CartItem, Category, Product } from "../data/products";
-import { CATEGORIES, products } from "../data/products";
+import { CATEGORIES } from "../data/products";
+import { useData } from "../lib/store";
 import { BeanIcon, ChevronIcon, SearchIcon } from "./Icons";
 import ProductCard from "./ProductCard";
 import { Reveal } from "./Reveal";
@@ -33,6 +34,7 @@ export default function Shop({
   onSetQty,
   onReset,
 }: ShopProps) {
+  const { products } = useData();
   const qtyOf = (id: string) => cart.find((c) => c.id === id)?.qty ?? 0;
 
   // counts reflect the current search, across categories

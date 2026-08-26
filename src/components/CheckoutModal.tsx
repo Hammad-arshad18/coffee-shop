@@ -1,6 +1,7 @@
 import { useEffect, useState, type InputHTMLAttributes } from "react";
 import { fmt, FLAT_SHIPPING, FREE_SHIPPING_THRESHOLD } from "../data/products";
 import { useEscape, useLockBody } from "../lib/hooks";
+import { useData } from "../lib/store";
 import type { CartLine } from "./CartDrawer";
 import { ArrowIcon, BeanIcon, CheckIcon, TruckIcon } from "./Icons";
 
@@ -49,6 +50,7 @@ function Field({
 }
 
 export default function CheckoutModal({ open, lines, subtotal, onClose, onComplete }: CheckoutModalProps) {
+  const { placeOrder } = useData();
   const [step, setStep] = useState<Step>("details");
   const [snapshot, setSnapshot] = useState<CartLine[]>([]);
   const [snapTotal, setSnapTotal] = useState(0);
@@ -107,11 +109,30 @@ export default function CheckoutModal({ open, lines, subtotal, onClose, onComple
     return Object.keys(e).length === 0;
   };
 
-  const placeOrder = () => {
+  const submitOrder = () => {
     if (!validPayment()) return;
     setStep("processing");
     window.setTimeout(() => {
-      setOrderNo(`CDR-${Math.floor(1000 + Math.random() * 9000)}`);
+      const order = placeOrder({
+        customer: {
+          name: form.name,
+          email: form.email,
+          address: form.address,
+          city: form.city,
+          zip: form.zip,
+        },
+        items: snapshot.map((l) => ({
+          productId: l.product.id,
+          name: l.product.name,
+          price: l.product.price,
+          qty: l.qty,
+          image: l.product.image,
+        })),
+        subtotal: snapTotal,
+        shipping,
+        total,
+      });
+      setOrderNo(order.number);
       setStep("success");
       onComplete();
     }, 1800);
@@ -289,7 +310,7 @@ export default function CheckoutModal({ open, lines, subtotal, onClose, onComple
                       Back
                     </button>
                     <button
-                      onClick={placeOrder}
+                      onClick={submitOrder}
                       className="flex-1 rounded-full bg-caramel py-3.5 text-sm font-extrabold uppercase tracking-[0.12em] text-espresso-950 transition-all hover:bg-honey hover:shadow-[0_12px_30px_-10px_rgba(217,154,78,0.6)]"
                     >
                       Place order · <span className="tnum">{fmt(total)}</span>

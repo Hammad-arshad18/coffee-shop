@@ -115,6 +115,13 @@ export const BodyIcon = (p: P) => (
   </Svg>
 );
 
+export const PencilIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="m14.5 5 4.5 4.5L8.5 20H4v-4.5L14.5 5Z" />
+    <path d="m12.5 7 4.5 4.5" />
+  </Svg>
+);
+
 export const TruckIcon = (p: P) => (
   <Svg {...p}>
     <path d="M2.5 7.5H14V16H2.5V7.5Z" />

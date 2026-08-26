@@ -1,23 +1,38 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import AdminPanel from "./admin/AdminPanel";
 import CartDrawer, { type CartLine } from "./components/CartDrawer";
 import CheckoutModal from "./components/CheckoutModal";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import ProductModal from "./components/ProductModal";
+import ReservationSection from "./components/ReservationSection";
 import Shop, { type SortKey } from "./components/Shop";
 import Story from "./components/Story";
 import Ticker from "./components/Ticker";
 import Toasts, { type Toast } from "./components/Toasts";
-import { products, type CartItem, type Category, type Product } from "./data/products";
+import { type CartItem, type Category, type Product } from "./data/products";
 import { useLocalStorage } from "./lib/hooks";
+import { DataProvider, useData } from "./lib/store";
 
-export default function App() {
+/** `#/admin` opens the console; plain anchors (#shop, #reserve…) stay in the storefront. */
+function useHashRoute() {
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const onHash = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  return hash;
+}
+
+function ShopSite() {
+  const { products } = useData();
   const [cart, setCart] = useLocalStorage<CartItem[]>("cinder-cart-v1", []);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"all" | Category>("all");
   const [sort, setSort] = useState<SortKey>("featured");
-  const [active, setActive] = useState<Product | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -82,7 +97,7 @@ export default function App() {
         break;
     }
     return list;
-  }, [query, category, sort]);
+  }, [products, query, category, sort]);
 
   const lines: CartLine[] = useMemo(
     () =>
@@ -92,7 +107,7 @@ export default function App() {
           return product ? { product, qty: ci.qty } : null;
         })
         .filter((l): l is CartLine => l !== null),
-    [cart]
+    [cart, products]
   );
 
   const subtotal = useMemo(() => lines.reduce((n, l) => n + l.product.price * l.qty, 0), [lines]);
@@ -103,6 +118,9 @@ export default function App() {
     setCategory("all");
     setSort("featured");
   }, []);
+
+  const featured = products[0];
+  const active = activeId ? products.find((p) => p.id === activeId) ?? null : null;
 
   return (
     <div className="relative min-h-screen">
@@ -122,11 +140,13 @@ export default function App() {
         />
         <Ticker />
         <main>
-          <Hero
-            featured={products[0]}
-            onQuickAdd={(p) => addToCart(p)}
-            onOpen={(p) => setActive(p)}
-          />
+          {featured && (
+            <Hero
+              featured={featured}
+              onQuickAdd={(p) => addToCart(p)}
+              onOpen={(p) => setActiveId(p.id)}
+            />
+          )}
           <Shop
             query={query}
             category={category}
@@ -136,10 +156,11 @@ export default function App() {
             onCategoryChange={setCategory}
             onSortChange={setSort}
             onAdd={(p) => addToCart(p)}
-            onOpen={(p) => setActive(p)}
+            onOpen={(p) => setActiveId(p.id)}
             onSetQty={setQty}
             onReset={resetFilters}
           />
+          <ReservationSection />
           <Story />
         </main>
         <Footer />
@@ -149,10 +170,10 @@ export default function App() {
       <ProductModal
         product={active}
         cartQty={active ? cart.find((c) => c.id === active.id)?.qty ?? 0 : 0}
-        onClose={() => setActive(null)}
+        onClose={() => setActiveId(null)}
         onAdd={(p, qty) => {
           addToCart(p, qty);
-          setActive(null);
+          setActiveId(null);
         }}
       />
       <CartDrawer
@@ -174,11 +195,26 @@ export default function App() {
         onClose={() => setCheckoutOpen(false)}
         onComplete={() => {
           setCart([]);
-          pushToast("Order placed — see you Tuesday");
+          pushToast("Order placed — it's on the admin board now");
         }}
       />
       <Toasts toasts={toasts} />
       <div className="noise-overlay" aria-hidden="true" />
     </div>
+  );
+}
+
+export default function App() {
+  const hash = useHashRoute();
+  const isAdmin = hash.startsWith("#/admin");
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [isAdmin]);
+
+  return (
+    <DataProvider>
+      {isAdmin ? <AdminPanel /> : <ShopSite />}
+    </DataProvider>
   );
 }

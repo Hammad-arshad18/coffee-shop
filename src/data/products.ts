@@ -28,11 +28,65 @@ export interface Product {
   badge?: string;
   rating: number;
   reviews: number;
+  /** false = sold out; undefined/true = on the menu */
+  available?: boolean;
 }
 
 export interface CartItem {
   id: string;
   qty: number;
+}
+
+/* ---- orders ---- */
+
+export type OrderStatus = "pending" | "roasting" | "shipped" | "delivered" | "cancelled";
+
+export interface OrderItem {
+  productId: string;
+  name: string;
+  price: number;
+  qty: number;
+  image: string;
+}
+
+export interface Order {
+  id: string;
+  number: string;
+  createdAt: string;
+  status: OrderStatus;
+  customer: { name: string; email: string; address: string; city: string; zip: string };
+  items: OrderItem[];
+  subtotal: number;
+  shipping: number;
+  total: number;
+}
+
+/* ---- tables & reservations ---- */
+
+export interface Table {
+  id: string;
+  name: string;
+  seats: number;
+  zone: string;
+  status: "available" | "maintenance";
+}
+
+export type ReservationStatus = "pending" | "confirmed" | "declined";
+
+export interface Reservation {
+  id: string;
+  code: string;
+  name: string;
+  email: string;
+  tableId: string;
+  tableName: string;
+  seats: number;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  party: number;
+  notes?: string;
+  status: ReservationStatus;
+  createdAt: string;
 }
 
 export const FREE_SHIPPING_THRESHOLD = 40;

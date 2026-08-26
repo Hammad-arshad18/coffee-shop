@@ -26,6 +26,7 @@ interface ProductModalProps {
 export default function ProductModal({ product, cartQty, onClose, onAdd }: ProductModalProps) {
   const [qty, setQty] = useState(1);
   const [metersOn, setMetersOn] = useState(false);
+  const soldOut = product ? product.available === false : false;
 
   useLockBody(product !== null);
   useEscape(product !== null, onClose);
@@ -166,6 +167,12 @@ export default function ProductModal({ product, cartQty, onClose, onAdd }: Produ
           </div>
 
           <div className="sticky bottom-0 -mx-6 mt-8 border-t border-cream/10 bg-espresso-900/95 px-6 py-4 backdrop-blur md:-mx-8 md:px-8">
+            {soldOut ? (
+              <p className="py-2 text-center text-sm font-bold text-[#e58a63]">
+                Sold out — this lot returns after Tuesday's roast
+              </p>
+            ) : (
+            <>
             <div className="flex items-center gap-3">
               <div className="flex items-center rounded-full border border-cream/20">
                 <button
@@ -199,6 +206,8 @@ export default function ProductModal({ product, cartQty, onClose, onAdd }: Produ
               <p className="tnum mt-2 text-center text-[11px] text-mocha">
                 {cartQty} already in your cart
               </p>
+            )}
+            </>
             )}
           </div>
         </div>

@@ -10,8 +10,10 @@ interface HeaderProps {
 
 const NAV = [
   { label: "Shop", href: "#shop" },
+  { label: "Reserve", href: "#reserve" },
   { label: "Roast log", href: "#story" },
   { label: "Visit", href: "#visit" },
+  { label: "Admin", href: "#/admin" },
 ];
 
 export default function Header({ cartCount, onCartOpen, query, onQueryChange }: HeaderProps) {
