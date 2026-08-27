@@ -181,3 +181,32 @@ export const LogoMark = (p: P) => (
     <path d="M10.5 29.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
+
+export const UserIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="8" r="3.6" />
+    <path d="M4.5 20c1.3-3.4 4.1-5 7.5-5s6.2 1.6 7.5 5" />
+  </Svg>
+);
+
+export const LockIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="5.5" y="10.5" width="13" height="9.5" rx="2" />
+    <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" />
+    <path d="M12 14.5v2" />
+  </Svg>
+);
+
+export const ShieldIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M12 3.5 19 6v6c0 4.6-3 7.6-7 9-4-1.4-7-4.4-7-9V6l7-2.5Z" />
+    <path d="m9 11.8 2.2 2.2 4-4.2" />
+  </Svg>
+);
+
+export const LogOutIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M14 4.5H7A2.5 2.5 0 0 0 4.5 7v10A2.5 2.5 0 0 0 7 19.5h7" />
+    <path d="M16 8.5 19.5 12 16 15.5M19.5 12H10" />
+  </Svg>
+);

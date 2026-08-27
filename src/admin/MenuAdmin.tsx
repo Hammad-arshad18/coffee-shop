@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { BeanIcon, PencilIcon, PlusIcon } from "../components/Icons";
+import { BeanIcon, LockIcon, PencilIcon, PlusIcon } from "../components/Icons";
 import { CATEGORY_LABEL, fmt, type Product } from "../data/products";
-import { useData } from "../lib/store";
+import { can, useData } from "../lib/store";
 import { Pill } from "./AdminPanel";
 import ProductForm from "./ProductForm";
 
 export default function MenuAdmin() {
-  const { products, deleteProduct, upsertProduct } = useData();
+  const { products, deleteProduct, upsertProduct, currentUser } = useData();
+  const allowCreate = can(currentUser, "menu.create");
+  const allowEdit = can(currentUser, "menu.edit");
+  const allowStock = can(currentUser, "menu.stock");
+  const allowDelete = can(currentUser, "menu.delete");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -23,16 +27,25 @@ export default function MenuAdmin() {
             Add, edit, price and retire roasts — the storefront shelf updates instantly.
           </p>
         </div>
-        <button
-          onClick={() => {
-            setEditing(null);
-            setFormOpen(true);
-          }}
-          className="flex items-center gap-2 rounded-full bg-caramel px-5 py-3 text-xs font-extrabold uppercase tracking-[0.12em] text-espresso-950 transition-all hover:-translate-y-0.5 hover:bg-honey"
-        >
-          <PlusIcon /> New roast
-        </button>
+        {allowCreate && (
+          <button
+            onClick={() => {
+              setEditing(null);
+              setFormOpen(true);
+            }}
+            className="flex items-center gap-2 rounded-full bg-caramel px-5 py-3 text-xs font-extrabold uppercase tracking-[0.12em] text-espresso-950 transition-all hover:-translate-y-0.5 hover:bg-honey"
+          >
+            <PlusIcon /> New roast
+          </button>
+        )}
       </div>
+
+      {!allowEdit && (
+        <p className="mt-5 flex items-center gap-2.5 rounded-lg border border-cream/12 bg-espresso-900 px-4 py-3 text-[13px] font-semibold text-latte">
+          <span className="text-caramel"><LockIcon /></span>
+          Read-only — the Staff role can browse the menu but not change it. Ask a manager or admin for edits.
+        </p>
+      )}
 
       {products.length === 0 ? (
         <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-cream/15 py-16 text-center">
@@ -72,27 +85,31 @@ export default function MenuAdmin() {
                 <span className="tnum w-16 shrink-0 text-right font-display text-lg text-honey">{fmt(p.price)}</span>
 
                 <div className="flex shrink-0 items-center gap-1.5">
-                  <button
-                    onClick={() => toggleAvailable(p)}
-                    className={`rounded-lg border px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.08em] transition-colors ${
-                      soldOut
-                        ? "border-sage/50 text-sage hover:bg-sage/10"
-                        : "border-cream/15 text-mocha hover:border-honey/50 hover:text-honey"
-                    }`}
-                  >
-                    {soldOut ? "Restock" : "Mark sold out"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditing(p);
-                      setFormOpen(true);
-                    }}
-                    aria-label={`Edit ${p.name}`}
-                    className="grid h-9 w-9 place-items-center rounded-lg border border-cream/15 text-latte transition-colors hover:border-caramel/60 hover:text-honey"
-                  >
-                    <PencilIcon />
-                  </button>
-                  {confirmDelete === p.id ? (
+                  {allowStock && (
+                    <button
+                      onClick={() => toggleAvailable(p)}
+                      className={`rounded-lg border px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.08em] transition-colors ${
+                        soldOut
+                          ? "border-sage/50 text-sage hover:bg-sage/10"
+                          : "border-cream/15 text-mocha hover:border-honey/50 hover:text-honey"
+                      }`}
+                    >
+                      {soldOut ? "Restock" : "Mark sold out"}
+                    </button>
+                  )}
+                  {allowEdit && (
+                    <button
+                      onClick={() => {
+                        setEditing(p);
+                        setFormOpen(true);
+                      }}
+                      aria-label={`Edit ${p.name}`}
+                      className="grid h-9 w-9 place-items-center rounded-lg border border-cream/15 text-latte transition-colors hover:border-caramel/60 hover:text-honey"
+                    >
+                      <PencilIcon />
+                    </button>
+                  )}
+                  {allowDelete && (confirmDelete === p.id ? (
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => {
@@ -117,7 +134,7 @@ export default function MenuAdmin() {
                     >
                       Delete
                     </button>
-                  )}
+                  ))}
                 </div>
               </li>
             );

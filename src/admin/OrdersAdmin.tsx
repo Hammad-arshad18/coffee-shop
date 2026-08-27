@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { CartIcon, CheckIcon, ChevronIcon, CloseIcon, TruckIcon } from "../components/Icons";
 import { fmt, type Order, type OrderStatus } from "../data/products";
-import { fmtDateTime, useData } from "../lib/store";
+import { can, fmtDateTime, useData } from "../lib/store";
 import { orderTone, Pill } from "./AdminPanel";
 
 const FILTERS: ("all" | OrderStatus)[] = ["all", "pending", "roasting", "shipped", "delivered", "cancelled"];
 
 export default function OrdersAdmin() {
-  const { orders, setOrderStatus } = useData();
+  const { orders, setOrderStatus, currentUser } = useData();
+  const allowCancel = can(currentUser, "orders.cancel");
   const [filter, setFilter] = useState<"all" | OrderStatus>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
@@ -82,6 +83,7 @@ export default function OrdersAdmin() {
                     <div className="flex flex-wrap items-center gap-2.5">
                       <span className="tnum font-display text-lg text-cream">{o.number}</span>
                       <Pill tone={orderTone[o.status]}>{o.status}</Pill>
+                      {o.userId ? <Pill tone="sage">account</Pill> : <Pill tone="mocha">guest</Pill>}
                     </div>
                     <p className="mt-0.5 truncate text-[12.5px] text-mocha">
                       {o.customer.name} · {o.items.reduce((n, i) => n + i.qty, 0)} bags · {fmtDateTime(o.createdAt)}
@@ -135,7 +137,7 @@ export default function OrdersAdmin() {
                               {advanceTo}
                             </button>
                           )}
-                          {confirmCancel === o.id ? (
+                          {allowCancel && (confirmCancel === o.id ? (
                             <div className="flex gap-2">
                               <button
                                 onClick={() => {
@@ -160,7 +162,7 @@ export default function OrdersAdmin() {
                             >
                               <CloseIcon className="text-xs" /> Cancel order
                             </button>
-                          )}
+                          ))}
                         </div>
                       )}
                     </div>

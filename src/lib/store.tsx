@@ -12,6 +12,108 @@ import { useLocalStorage } from "./hooks";
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
+/* ================= auth · roles · permissions ================= */
+
+export type Role = "admin" | "manager" | "staff" | "customer";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password: string; // demo MVP — stored in plain text, browser-only
+  role: Role;
+  createdAt: string;
+  /** customer shipping profile */
+  address?: string;
+  city?: string;
+  zip?: string;
+}
+
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: "Owner · Admin",
+  manager: "Manager",
+  staff: "Staff",
+  customer: "Customer",
+};
+
+export type Perm =
+  | "orders.advance"
+  | "orders.cancel"
+  | "menu.create"
+  | "menu.edit"
+  | "menu.stock"
+  | "menu.delete"
+  | "tables.manage"
+  | "reservations.decide"
+  | "team.manage";
+
+export const ROLE_PERMS: Record<Perm, Role[]> = {
+  "orders.advance": ["admin", "manager", "staff"],
+  "orders.cancel": ["admin", "manager"],
+  "menu.create": ["admin", "manager"],
+  "menu.edit": ["admin", "manager"],
+  "menu.stock": ["admin", "manager"],
+  "menu.delete": ["admin"],
+  "tables.manage": ["admin", "manager"],
+  "reservations.decide": ["admin", "manager", "staff"],
+  "team.manage": ["admin"],
+};
+
+export const can = (user: User | null, perm: Perm): boolean =>
+  !!user && ROLE_PERMS[perm].includes(user.role);
+
+export const PERM_LABEL: Record<Perm, string> = {
+  "orders.advance": "Advance orders through the pipeline",
+  "orders.cancel": "Cancel orders",
+  "menu.create": "Add new roasts",
+  "menu.edit": "Edit roasts & pricing",
+  "menu.stock": "Mark sold out / restock",
+  "menu.delete": "Delete roasts",
+  "tables.manage": "Add, edit & close tables",
+  "reservations.decide": "Confirm & decline reservations",
+  "team.manage": "Manage team accounts & roles",
+};
+
+const SEED_USERS: User[] = [
+  {
+    id: "u-etta",
+    name: "Etta Kline",
+    email: "admin@cinder.roast",
+    password: "ember-214",
+    role: "admin",
+    createdAt: "2024-03-02T09:00:00.000Z",
+  },
+  {
+    id: "u-marcus",
+    name: "Marcus Webb",
+    email: "manager@cinder.roast",
+    password: "first-crack",
+    role: "manager",
+    createdAt: "2024-08-19T09:00:00.000Z",
+  },
+  {
+    id: "u-sofia",
+    name: "Sofia Reyes",
+    email: "staff@cinder.roast",
+    password: "slow-pour",
+    role: "staff",
+    createdAt: "2025-05-30T09:00:00.000Z",
+  },
+  {
+    id: "u-june",
+    name: "June Kettle",
+    email: "june@kettle.coffee",
+    password: "drip-drip",
+    role: "customer",
+    createdAt: "2025-11-08T09:00:00.000Z",
+    address: "1140 SE Ankeny St",
+    city: "Portland",
+    zip: "97214",
+  },
+];
+
+/* ================= seeds ================= */
+
 const SEED_TABLES: Table[] = [
   { id: "t-w1", name: "W1", seats: 2, zone: "Window", status: "available" },
   { id: "t-w2", name: "W2", seats: 2, zone: "Window", status: "available" },
@@ -27,6 +129,7 @@ interface NewOrder {
   subtotal: number;
   shipping: number;
   total: number;
+  userId: string | null;
 }
 
 interface NewReservation {
@@ -37,6 +140,12 @@ interface NewReservation {
   time: string;
   party: number;
   notes?: string;
+  userId?: string | null;
+}
+
+interface AuthResult {
+  user?: User;
+  error?: string;
 }
 
 interface DataCtx {
@@ -44,6 +153,8 @@ interface DataCtx {
   orders: Order[];
   tables: Table[];
   reservations: Reservation[];
+  users: User[];
+  currentUser: User | null;
   upsertProduct: (p: Product) => void;
   deleteProduct: (id: string) => void;
   placeOrder: (input: NewOrder) => Order;
@@ -52,6 +163,13 @@ interface DataCtx {
   deleteTable: (id: string) => void;
   addReservation: (input: NewReservation) => Reservation;
   setReservationStatus: (id: string, status: ReservationStatus) => void;
+  login: (email: string, password: string) => User | null;
+  logout: () => void;
+  register: (input: { name: string; email: string; password: string }) => AuthResult;
+  updateUser: (id: string, patch: Partial<User>) => void;
+  addStaffUser: (input: { name: string; email: string; password: string; role: Role }) => AuthResult;
+  setRole: (id: string, role: Role) => void;
+  removeUser: (id: string) => void;
 }
 
 const Ctx = createContext<DataCtx | null>(null);
@@ -64,6 +182,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     "cinder-reservations-v1",
     []
   );
+  const [users, setUsers] = useLocalStorage<User[]>("cinder-users-v1", SEED_USERS);
+  const [sessionId, setSessionId] = useLocalStorage<string | null>("cinder-session-v1", null);
+
+  const currentUser = useMemo(
+    () => users.find((u) => u.id === sessionId) ?? null,
+    [users, sessionId]
+  );
 
   const value = useMemo<DataCtx>(
     () => ({
@@ -71,6 +196,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       orders,
       tables,
       reservations,
+      users,
+      currentUser,
       upsertProduct: (p) =>
         setProducts((list) =>
           list.some((x) => x.id === p.id)
@@ -114,8 +241,78 @@ export function DataProvider({ children }: { children: ReactNode }) {
       },
       setReservationStatus: (id, status) =>
         setReservations((list) => list.map((r) => (r.id === id ? { ...r, status } : r))),
+
+      /* ---- auth ---- */
+      login: (email, password) => {
+        const u = users.find(
+          (x) => x.email.toLowerCase() === email.trim().toLowerCase() && x.password === password
+        );
+        if (!u) return null;
+        setSessionId(u.id);
+        return u;
+      },
+      logout: () => setSessionId(null),
+      register: ({ name, email, password }) => {
+        if (users.some((x) => x.email.toLowerCase() === email.trim().toLowerCase()))
+          return { error: "An account with that email already exists." };
+        const u: User = {
+          id: uid(),
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          role: "customer",
+          createdAt: new Date().toISOString(),
+        };
+        setUsers((list) => [...list, u]);
+        setSessionId(u.id);
+        return { user: u };
+      },
+      updateUser: (id, patch) =>
+        setUsers((list) => list.map((u) => (u.id === id ? { ...u, ...patch } : u))),
+      addStaffUser: ({ name, email, password, role }) => {
+        if (users.some((x) => x.email.toLowerCase() === email.trim().toLowerCase()))
+          return { error: "That email is already on the roster." };
+        const u: User = {
+          id: uid(),
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          role: role === "customer" ? "staff" : role,
+          createdAt: new Date().toISOString(),
+        };
+        setUsers((list) => [...list, u]);
+        return { user: u };
+      },
+      setRole: (id, role) => {
+        const target = users.find((u) => u.id === id);
+        if (!target) return;
+        const adminCount = users.filter((u) => u.role === "admin").length;
+        if (target.role === "admin" && role !== "admin" && adminCount <= 1) return; // never drop the last admin
+        setUsers((list) => list.map((u) => (u.id === id ? { ...u, role } : u)));
+      },
+      removeUser: (id) => {
+        const target = users.find((u) => u.id === id);
+        if (!target) return;
+        if (target.role === "admin" && users.filter((u) => u.role === "admin").length <= 1) return;
+        setUsers((list) => list.filter((u) => u.id !== id));
+        if (sessionId === id) setSessionId(null);
+      },
     }),
-    [products, orders, tables, reservations, setProducts, setOrders, setTables, setReservations]
+    [
+      products,
+      orders,
+      tables,
+      reservations,
+      users,
+      currentUser,
+      sessionId,
+      setProducts,
+      setOrders,
+      setTables,
+      setReservations,
+      setUsers,
+      setSessionId,
+    ]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

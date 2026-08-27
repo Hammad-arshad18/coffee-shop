@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowIcon, BeanIcon, CheckIcon, ClockIcon, PinIcon } from "./Icons";
 import { fmtDate, todayISO, useData } from "../lib/store";
 import { Reveal } from "./Reveal";
@@ -12,7 +12,7 @@ const inputCls =
   "w-full rounded-lg border border-cream/15 bg-espresso-850 px-3.5 py-3 text-sm text-cream outline-none transition-colors placeholder:text-mocha/60 hover:border-cream/25 focus:border-caramel/70";
 
 export default function ReservationSection() {
-  const { tables, reservations, addReservation } = useData();
+  const { tables, reservations, addReservation, currentUser } = useData();
 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -33,6 +33,14 @@ export default function ReservationSection() {
     d.setDate(d.getDate() + 30);
     return `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, "0")}-${`${d.getDate()}`.padStart(2, "0")}`;
   }, []);
+
+  // signed-in customers book under their saved details
+  useEffect(() => {
+    if (currentUser && currentUser.role === "customer") {
+      setName((n) => n || currentUser.name);
+      setEmail((e) => e || currentUser.email);
+    }
+  }, [currentUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openTables = tables.filter((t) => t.status === "available");
 
@@ -64,6 +72,7 @@ export default function ReservationSection() {
       time,
       party,
       notes: notes.trim() || undefined,
+      userId: currentUser?.id ?? null,
     });
     setDone({ code: r.code, name: r.name, table: table?.name ?? "—" });
     setError("");
@@ -195,6 +204,15 @@ export default function ReservationSection() {
             ) : (
               <div className="rounded-2xl border border-cream/12 bg-espresso-900/80 p-6 shadow-[0_40px_90px_-40px_rgba(0,0,0,0.9)] md:p-8">
                 <h3 className="font-display text-2xl">Reserve a table</h3>
+                {currentUser?.role === "customer" ? (
+                  <p className="mt-1.5 text-[12px] text-mocha">
+                    Booking as <span className="font-bold text-honey">{currentUser.name}</span> — we'll use your account email.
+                  </p>
+                ) : (
+                  <p className="mt-1.5 text-[12px] text-mocha">
+                    Guests can book too — just leave an email so Etta can confirm.
+                  </p>
+                )}
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
                   <label className="block sm:col-span-1">

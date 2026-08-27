@@ -50,7 +50,8 @@ function Field({
 }
 
 export default function CheckoutModal({ open, lines, subtotal, onClose, onComplete }: CheckoutModalProps) {
-  const { placeOrder } = useData();
+  const { placeOrder, currentUser, updateUser } = useData();
+  const isCustomer = currentUser?.role === "customer";
   const [step, setStep] = useState<Step>("details");
   const [snapshot, setSnapshot] = useState<CartLine[]>([]);
   const [snapTotal, setSnapTotal] = useState(0);
@@ -69,6 +70,16 @@ export default function CheckoutModal({ open, lines, subtotal, onClose, onComple
       setErrors({});
       setForm(EMPTY);
       setOrderNo("");
+      if (currentUser && currentUser.role === "customer") {
+        setForm({
+          ...EMPTY,
+          name: currentUser.name,
+          email: currentUser.email,
+          address: currentUser.address ?? "",
+          city: currentUser.city ?? "",
+          zip: currentUser.zip ?? "",
+        });
+      }
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -131,7 +142,17 @@ export default function CheckoutModal({ open, lines, subtotal, onClose, onComple
         subtotal: snapTotal,
         shipping,
         total,
+        userId: currentUser?.id ?? null,
       });
+      if (currentUser && currentUser.role === "customer") {
+        updateUser(currentUser.id, {
+          name: form.name,
+          email: form.email,
+          address: form.address,
+          city: form.city,
+          zip: form.zip,
+        });
+      }
       setOrderNo(order.number);
       setStep("success");
       onComplete();
@@ -247,6 +268,11 @@ export default function CheckoutModal({ open, lines, subtotal, onClose, onComple
               ) : step === "details" ? (
                 <div className="mt-6">
                   <h3 className="font-display text-2xl">Where's it headed?</h3>
+                  <p className="mt-1.5 text-[12px] leading-relaxed text-mocha">
+                    {isCustomer
+                      ? `Signed in as ${currentUser!.name} — we'll save these details to your profile.`
+                      : "Checking out as a guest — create an account from the header any time."}
+                  </p>
                   <div className="mt-5 space-y-4">
                     <Field label="Full name" placeholder="June Kettle" value={form.name} error={errors.name} onChange={(e) => set("name")(e.target.value)} />
                     <Field label="Email" type="email" placeholder="june@kettle.coffee" value={form.email} error={errors.email} onChange={(e) => set("email")(e.target.value)} />

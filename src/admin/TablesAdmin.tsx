@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { PencilIcon, PinIcon, PlusIcon } from "../components/Icons";
+import { LockIcon, PencilIcon, PinIcon, PlusIcon } from "../components/Icons";
 import { type Table } from "../data/products";
-import { uid, useData } from "../lib/store";
+import { can, uid, useData } from "../lib/store";
 import { Pill } from "./AdminPanel";
 
 const ZONES = ["Window", "Bar", "Floor", "Patio", "Lounge"];
@@ -10,7 +10,8 @@ const inputCls =
   "w-full rounded-lg border border-cream/15 bg-espresso-850 px-3.5 py-2.5 text-sm text-cream outline-none transition-colors placeholder:text-mocha/60 hover:border-cream/25 focus:border-caramel/70";
 
 export default function TablesAdmin() {
-  const { tables, reservations, upsertTable, deleteTable } = useData();
+  const { tables, reservations, upsertTable, deleteTable, currentUser } = useData();
+  const canManage = can(currentUser, "tables.manage");
   const [name, setName] = useState("");
   const [seats, setSeats] = useState(2);
   const [zone, setZone] = useState(ZONES[0]);
@@ -57,7 +58,15 @@ export default function TablesAdmin() {
         The floor plan guests book against. Add a table here and it appears in the reservation picker immediately.
       </p>
 
+      {!canManage && (
+        <p className="mt-5 flex items-center gap-2.5 rounded-lg border border-cream/12 bg-espresso-900 px-4 py-3 text-[13px] font-semibold text-latte">
+          <span className="text-caramel"><LockIcon /></span>
+          Read-only — the Staff role can view the floor plan but not change it.
+        </p>
+      )}
+
       {/* add / edit form */}
+      {canManage && (
       <div className="mt-6 rounded-xl border border-cream/10 bg-espresso-900 p-5">
         <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-caramel">
           {editingId ? "Edit table" : "Add a table"}
@@ -95,6 +104,7 @@ export default function TablesAdmin() {
         </div>
         {error && <p className="mt-3 text-sm font-semibold text-[#e58a63]">{error}</p>}
       </div>
+      )}
 
       {/* floor plan */}
       {tables.length === 0 ? (
@@ -125,6 +135,7 @@ export default function TablesAdmin() {
                   <Pill tone={maintenance ? "mocha" : "sage"}>{maintenance ? "Maintenance" : "Open"}</Pill>
                 </div>
 
+                {canManage && (
                 <div className="mt-4 flex flex-wrap gap-1.5">
                   <button
                     onClick={() => upsertTable({ ...t, status: maintenance ? "available" : "maintenance" })}
@@ -167,6 +178,7 @@ export default function TablesAdmin() {
                     </button>
                   )}
                 </div>
+                )}
               </div>
             );
           })}

@@ -59,6 +59,8 @@ export interface Order {
   subtotal: number;
   shipping: number;
   total: number;
+  /** null = guest checkout */
+  userId?: string | null;
 }
 
 /* ---- tables & reservations ---- */

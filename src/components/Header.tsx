@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { CartIcon, CloseIcon, LogoMark, SearchIcon } from "./Icons";
+import { useData } from "../lib/store";
+import AccountModal from "./AccountModal";
+import { CartIcon, CloseIcon, LogoMark, SearchIcon, UserIcon } from "./Icons";
 
 interface HeaderProps {
   cartCount: number;
@@ -19,7 +21,17 @@ const NAV = [
 export default function Header({ cartCount, onCartOpen, query, onQueryChange }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileSearch, setMobileSearch] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const mobileInputRef = useRef<HTMLInputElement>(null);
+  const { currentUser } = useData();
+  const initials = currentUser
+    ? currentUser.name
+        .split(/\s+/)
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -98,6 +110,35 @@ export default function Header({ cartCount, onCartOpen, query, onQueryChange }: 
           </button>
 
           <button
+            onClick={() => setAccountOpen(true)}
+            aria-label="Account"
+            title={currentUser ? `Signed in as ${currentUser.name}` : "Sign in or create an account"}
+            className="group flex items-center gap-2 rounded-full border border-cream/15 py-2 pl-2.5 pr-2.5 sm:pr-4 text-sm font-bold text-cream transition-all duration-300 hover:border-caramel/70 hover:bg-espresso-900"
+          >
+            {currentUser ? (
+              <>
+                <span
+                  className={`grid h-7 w-7 place-items-center rounded-full text-[11px] font-extrabold ${
+                    currentUser.role === "customer"
+                      ? "bg-caramel/25 text-honey"
+                      : "bg-caramel text-espresso-950"
+                  }`}
+                >
+                  {initials}
+                </span>
+                <span className="hidden max-w-[92px] truncate sm:inline">
+                  {currentUser.name.split(" ")[0]}
+                </span>
+              </>
+            ) : (
+              <>
+                <UserIcon className="text-lg text-caramel transition-transform duration-300 group-hover:-translate-y-0.5" />
+                <span className="hidden sm:inline">Account</span>
+              </>
+            )}
+          </button>
+
+          <button
             onClick={onCartOpen}
             className="group relative flex items-center gap-2 rounded-full border border-cream/15 py-2.5 pl-4 pr-4 sm:pr-5 text-sm font-bold text-cream hover:border-caramel/70 hover:bg-espresso-900 transition-all duration-300"
           >
@@ -139,6 +180,8 @@ export default function Header({ cartCount, onCartOpen, query, onQueryChange }: 
           </div>
         </div>
       )}
+
+      <AccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />
     </header>
   );
 }
